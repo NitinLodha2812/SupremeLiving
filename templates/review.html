@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Customer Review</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .form-group {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            flex: 0 0 200px;
+            margin-right: 10px;
+        }
+
+        .form-group input[type="date"] {
+            flex: 1;
+        }
+
+        .form-group textarea {
+            flex: 1;
+        }
+
+        .form-group input[type="submit"], .form-group button {
+            margin-top: 10px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #333;
+            color: white;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+
+        tr:hover {
+            background-color: #ddd;
+        }
+
+        .button {
+            background-color: #333;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            text-align: center;
+            display: inline-block;
+        }
+
+        .button:hover {
+            background-color: #555;
+        }
+
+        #reviewTableContainer {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <a href="/">Home</a>
+        <a href="/quotation">Generate Quotation</a>
+        <a href="/follow">Follow Up</a>
+        <a href="/review">Customer Review</a>
+    </div>
+    
+    <div class="container">
+        <h1>Submit Review</h1>
+        <form id="reviewForm" action="/submit-review" method="post">
+            <div class="form-group">
+                <label for="name">Name:</label>
+                <input type="text" id="name" name="name" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="dob">Date of Birth:</label>
+                <input type="date" id="dob" name="dob" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="anniversary">Anniversary Date:</label>
+                <input type="date" id="anniversary" name="anniversary" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="review">Review Message:</label>
+                <textarea id="review" name="review" rows="4" required></textarea>
+            </div>
+            
+            <div class="form-group">
+                <input type="submit" value="Submit Review" class="button">
+            </div>
+        </form>
+        <br>
+        <button id="displayButton" class="button" onclick="fetchReviews()" style="display:none;">Display Reviews</button>
+        <div id="reviewTableContainer"></div>
+        <a href="/">Back to Home</a>
+    </div>
+
+    <script>
+        function displayReviews(reviews) {
+            const tableContainer = document.getElementById("reviewTableContainer");
+            tableContainer.innerHTML = '';
+            
+            if (reviews.length > 0) {
+                const table = document.createElement("table");
+                const headerRow = document.createElement("tr");
+
+                const headers = ["Anniversary Date", "DOB", "Name", "Review"];
+                headers.forEach(headerText => {
+                    const header = document.createElement("th");
+                    header.textContent = headerText;
+                    headerRow.appendChild(header);
+                });
+
+                table.appendChild(headerRow);
+
+                reviews.forEach(review => {
+                    const row = document.createElement("tr");
+
+                    Object.values(review).forEach(text => {
+                        const cell = document.createElement("td");
+                        cell.textContent = text;
+                        row.appendChild(cell);
+                    });
+
+                    table.appendChild(row);
+                });
+
+                tableContainer.appendChild(table);
+            } else {
+                tableContainer.textContent = 'No reviews available.';
+            }
+        }
+
+        document.getElementById('reviewForm').onsubmit = function(event) {
+            event.preventDefault();
+            fetch('/submit-review', {
+                method: 'POST',
+                body: new FormData(this)
+            }).then(response => response.json())
+              .then(data => {
+                  alert('Review submitted successfully!');
+                  document.getElementById('displayButton').style.display = 'block';
+              });
+        };
+
+        function fetchReviews() {
+            fetch('/get-reviews')
+                .then(response => response.json())
+                .then(data => displayReviews(data));
+        }
+    </script>
+</body>
+</html>

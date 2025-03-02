@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Follow Up</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="navbar">
+        <a href="/">Home</a>
+        <a href="/quotation">Generate Quotation</a>
+        <a href="/follow">Follow Up</a>
+        <a href="/review">Customer Review</a>
+    </div>
+    <div class="container">
+        <h1>Follow Up</h1>
+            <form action="/submit-customer" method="post">
+                <label for="name">Name:</label>
+                <input type="text" id="name" name="name" required><br>
+                <label for="email">Email Id:</label>
+                <input type="text" id="email" name="email" required><br>
+                <label for="message">Follow-Up Message:</label>
+                <textarea id="message" name="message" rows="4" required></textarea><br>
+                
+                <input type="submit" value="Send Follow-Up">
+            </form>
+
+            {% if success_message %}
+            <div class="success-message">
+                <p>{{ success_message }}</p>
+            </div>
+            {% endif %}
+            
+        <a href="/">Back to Home</a>
+    </div>
+</body>
+</html>

@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Send Catalog</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="navbar">
+        <a href="/">Home</a>
+        <a href="/quotation">Generate Quotation</a>
+        <a href="/follow">Follow Up</a>
+        <a href="/review">Customer Review</a>
+    </div>
+    <div class="container">
+        <h1>Upload PDF</h1>
+        <form action="/upload" method="post" enctype="multipart/form-data">
+            <label for="file">Upload PDF:</label>
+            <input type="file" id="file" name="file" required>
+            <input type="submit" value="Upload">
+        </form>
+        <br>
+        <h1>Send Catalog</h1>
+        <form action="/send" method="post">
+            <label for="name">Name:</label>
+            <input type="text" id="name" name="name" required><br>
+            <label for="email">Email Id:</label>
+            <input type="text" id="email" name="email" required><br>
+            <label for="catalog">Select Catalog:</label>
+            <select id="catalog" name="catalog" required>
+                {% for filename in files %}
+                    <option value="{{ filename }}">{{ filename }}</option>
+                {% endfor %}
+            </select><br>
+            <input type="submit" value="Send Catalog">
+        </form>
+
+        {% if success_message %}
+        <div class="success-message">
+            <p>{{ success_message }}</p>
+        </div>
+        {% endif %}
+        
+        <br>
+    </div>
+</body>
+</html>

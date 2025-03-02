@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generate Quotation</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .form-group {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            flex: 0 0 200px;
+            margin-right: 10px;
+        }
+
+        .form-group input[type="date"] {
+            flex: 1;
+        }
+
+        .form-group textarea {
+            flex: 1;
+        }
+
+        .form-group input[type="submit"], .form-group button {
+            margin-top: 10px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #333;
+            color: white;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+
+        tr:hover {
+            background-color: #ddd;
+        }
+
+        .button {
+            background-color: #333;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            text-align: center;
+            display: inline-block;
+        }
+
+        .button:hover {
+            background-color: #555;
+        }
+
+        #reviewTableContainer {
+            margin-top: 20px;
+        }
+    </style>
+    <script>
+        let products = {{ products | tojson }};
+        
+        function fillDetails(selectElement) {
+            let row = selectElement.closest('tr');
+            let productName = selectElement.value;
+            let product = products.find(p => p.name === productName);
+            if (product) {
+                row.querySelector('.price').value = product.price;
+                row.querySelector('.description').value = product.description;
+            } else {
+                row.querySelector('.price').value = '';
+                row.querySelector('.description').value = '';
+            }
+        }
+
+        function addItem() {
+            let table = document.getElementById('items-table');
+            let rowCount = table.rows.length;
+            let row = table.insertRow(rowCount);
+            row.innerHTML = `
+                <td>
+                    <select name="products[]" onchange="fillDetails(this)" required>
+                        <option value="">Select a product</option>
+                        {% for product in products %}
+                            <option value="{{ product['name'] }}">{{ product['name'] }}</option>
+                        {% endfor %}
+                    </select>
+                </td>
+                <td><input type="text" name="prices[]" class="price" readonly></td>
+                <td><input type="text" name="descriptions[]" class="description" readonly></td>
+                <td><input type="text" name="special_prices[]" required></td>
+                <td><button type="button" onclick="this.closest('tr').remove()">Remove</button></td>
+            `;
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            if (document.getElementById('items-table').rows.length === 1) {
+                addItem();
+            }
+
+            document.querySelectorAll('#items-table tbody tr')[0].querySelector('button').style.display = 'none';
+        });
+    </script>
+</head>
+<body>
+    <div class="navbar">
+        <a href="/">Home</a>
+        <a href="/quotation">Generate Quotation</a>
+        <a href="/follow">Follow Up</a>
+        <a href="/review">Customer Review</a>
+    </div>
+    <div class="container">
+        <h1>Generate Quotation</h1>
+        <form action="/generate_quotation" method="post">
+            <label for="number">No.:</label>
+            <input type="number" id="number" name="number" required><br>
+            <label for="name">Name:</label>
+            <input type="text" id="name" name="name" required><br>
+            <label for="email">Email Id:</label>
+            <input type="text" id="email" name="email" required><br>
+            
+            <table id="items-table">
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>Price</th>
+                        <th>Description</th>
+                        <th>Special Price</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>
+                            <select name="products[]" onchange="fillDetails(this)" required>
+                                <option value="">Select a product</option>
+                                {% for product in products %}
+                                    <option value="{{ product['name'] }}">{{ product['name'] }}</option>
+                                {% endfor %}
+                            </select>
+                        </td>
+                        <td><input type="text" name="prices[]" class="price" readonly></td>
+                        <td><input type="text" name="descriptions[]" class="description" readonly></td>
+                        <td><input type="text" name="special_prices[]" required></td>
+                        <td><button type="button" class="button" style="display:none;">Remove</button></td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <button type="button" class="button" class="button"onclick="addItem()">Add Item</button><br><br>
+            <button type="submit" class="button" name="send_email" value="1">Send Quotation</button>
+            <button type="submit" class="button" name="download_pdf" value="1">Download Quotation</button>
+        </form>
+        <br>
+
+        {% if success_message %}
+        <div class="success-message">
+            <p>{{ success_message }}</p>
+        </div>
+        {% endif %}
+        
+        <a href="/">Back to Home</a>
+    </div>
+</body>
+</html>
