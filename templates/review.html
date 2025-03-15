@@ -108,12 +108,15 @@
             </div>
         </form>
         <br>
-        <button id="displayButton" class="button" onclick="fetchReviews()" style="display:none;">Display Reviews</button>
-        <div id="reviewTableContainer"></div>
+        <h2>Customer Reviews</h2>
+        <div id="reviewTableContainer">
+            <p>Loading reviews...</p>
+        </div>
         <a href="/">Back to Home</a>
     </div>
 
     <script>
+        // Display reviews in the table
         function displayReviews(reviews) {
             const tableContainer = document.getElementById("reviewTableContainer");
             tableContainer.innerHTML = '';
@@ -145,27 +148,42 @@
 
                 tableContainer.appendChild(table);
             } else {
-                tableContainer.textContent = 'No reviews available.';
+                tableContainer.innerHTML = '<p>No reviews available.</p>';
             }
         }
 
+        // Fetch reviews from the server
+        function fetchReviews() {
+            fetch('/get-reviews')
+                .then(response => response.json())
+                .then(data => displayReviews(data))
+                .catch(error => {
+                    console.error('Error fetching reviews:', error);
+                    document.getElementById("reviewTableContainer").innerHTML = '<p>Failed to load reviews. Please try again later.</p>';
+                });
+        }
+
+        // Handle form submission
         document.getElementById('reviewForm').onsubmit = function(event) {
             event.preventDefault();
             fetch('/submit-review', {
                 method: 'POST',
                 body: new FormData(this)
-            }).then(response => response.json())
-              .then(data => {
-                  alert('Review submitted successfully!');
-                  document.getElementById('displayButton').style.display = 'block';
-              });
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert('Review submitted successfully!');
+                this.reset(); // Reset the form
+                fetchReviews(); // Fetch and display the updated reviews
+            })
+            .catch(error => {
+                console.error('Error submitting review:', error);
+                alert('Failed to submit review. Please try again.');
+            });
         };
 
-        function fetchReviews() {
-            fetch('/get-reviews')
-                .then(response => response.json())
-                .then(data => displayReviews(data));
-        }
+        // Load reviews when page loads
+        document.addEventListener('DOMContentLoaded', fetchReviews);
     </script>
 </body>
 </html>

@@ -3,9 +3,12 @@ from werkzeug.utils import secure_filename
 import os
 import pandas as pd
 from fpdf import FPDF
-import requests
 from datetime import datetime
 import csv
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from email.mime.application import MIMEApplication
 
 app = Flask(__name__)
 
@@ -13,8 +16,9 @@ UPLOAD_FOLDER = 'uploads/'
 ALLOWED_EXTENSIONS = {'pdf'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-MAILGUN_API_KEY = "1292bdf1ac2a5f43445edcbebd6db7fd-2b91eb47-013a2278"
-DOMAIN_NAME = 'sandboxea8732bc3bbc48b3b487a492cbf7a908.mailgun.org' 
+# Gmail configuration instead of Mailgun
+EMAIL_ADDRESS = os.environ.get("EMAIL_ADDRESS")
+EMAIL_PASSWORD = os.environ.get("EMAIL_PASSWORD") # Use App Password, not regular password
 
 def read_excel(file_path):
     df = pd.read_excel(file_path)
@@ -32,19 +36,37 @@ def generate_message_quotation(name):
     return f'Hello {name}, \nHere is your quotation.'
 
 def send_email(email, message, subject, media_url = None):
-    recipient_email = email
-    text = message
-    file_path = media_url
-    if media_url is not None:
-        response = requests.post(f'https://api.mailgun.net/v3/{DOMAIN_NAME}/messages', auth = ('api', MAILGUN_API_KEY),
-                                files = [("attachment", open(file_path, "rb"))],
-                                data = {'from': f'Mailgun Sandbox <mailgun@{DOMAIN_NAME}>',
-                                        'to': recipient_email, 'subject': subject,'text': text})
+    try:
+        # Create message container
+        msg = MIMEMultipart()
+        msg['From'] = EMAIL_ADDRESS
+        msg['To'] = email
+        msg['Subject'] = subject
         
-    else:
-        response = requests.post(f'https://api.mailgun.net/v3/{DOMAIN_NAME}/messages', auth = ('api', MAILGUN_API_KEY),
-                                data = {'from': f'Mailgun Sandbox <mailgun@{DOMAIN_NAME}>',
-                                        'to': recipient_email, 'subject': subject, 'text': text})
+        # Attach the message text
+        msg.attach(MIMEText(message))
+        
+        # Attach file if provided
+        if media_url is not None:
+            with open(media_url, 'rb') as file:
+                attachment = MIMEApplication(file.read(), _subtype="pdf")
+                attachment.add_header('Content-Disposition', 
+                                     'attachment', 
+                                     filename=os.path.basename(media_url))
+                msg.attach(attachment)
+        
+        # Connect to Gmail SMTP server
+        server = smtplib.SMTP('smtp.gmail.com', 587)
+        server.starttls()  # Secure the connection
+        server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+        
+        # Send email
+        server.send_message(msg)
+        server.quit()
+        return True
+    except Exception as e:
+        print(f"Error sending email: {e}")
+        return False
 
 @app.route('/')
 def index():
