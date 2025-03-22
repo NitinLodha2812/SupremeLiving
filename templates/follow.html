@@ -3,6 +3,56 @@
 <head>
     <title>Follow Up</title>
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        form {
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="text"], 
+        input[type="email"],
+        textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        textarea {
+            min-height: 150px;
+        }
+        .btn-primary {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .btn-primary:hover {
+            background-color: #45a049;
+        }
+        .success-message {
+            background-color: #dff0d8;
+            color: #3c763d;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+        .template-dropdown {
+            margin-bottom: 15px;
+        }
+    </style>
 </head>
 <body>
     <div class="navbar">
@@ -12,25 +62,78 @@
         <a href="/review">Customer Review</a>
     </div>
     <div class="container">
-        <h1>Follow Up</h1>
-            <form action="/submit-customer" method="post">
-                <label for="name">Name:</label>
-                <input type="text" id="name" name="name" required><br>
-                <label for="email">Email Id:</label>
-                <input type="text" id="email" name="email" required><br>
-                <label for="message">Follow-Up Message:</label>
-                <textarea id="message" name="message" rows="4" required></textarea><br>
-                
-                <input type="submit" value="Send Follow-Up">
-            </form>
-
-            {% if success_message %}
-            <div class="success-message">
-                <p>{{ success_message }}</p>
+        <h1>Customer Follow Up</h1>
+        
+        {% if success_message %}
+        <div class="success-message">
+            <p>{{ success_message }}</p>
+        </div>
+        {% endif %}
+        
+        <div class="template-dropdown">
+            <label for="template">Select message template:</label>
+            <select id="template" onchange="fillTemplate()">
+                <option value="">-- Select Template --</option>
+                <option value="template1">General Follow-up</option>
+                <option value="template2">Product Inquiry Follow-up</option>
+                <option value="template3">Post-Purchase Follow-up</option>
+            </select>
+        </div>
+        
+        <form action="/submit-customer" method="post">
+            <div class="form-group">
+                <label for="name">Customer Name:</label>
+                <input type="text" id="name" name="name" required>
             </div>
-            {% endif %}
             
+            <div class="form-group">
+                <label for="email">Customer Email:</label>
+                <input type="email" id="email" name="email" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="subject">Email Subject:</label>
+                <input type="text" id="subject" name="subject" value="Follow Up from SupremeLiving" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="message">Follow-Up Message:</label>
+                <textarea id="message" name="message" rows="8" required></textarea>
+            </div>
+            
+            <div class="form-group">
+                <button type="submit" class="btn-primary">Send Follow-Up Email</button>
+            </div>
+        </form>
+        
         <a href="/">Back to Home</a>
     </div>
+    
+    <script>
+        function fillTemplate() {
+            const templateSelect = document.getElementById('template');
+            const messageField = document.getElementById('message');
+            const subjectField = document.getElementById('subject');
+            
+            if (templateSelect.value === 'template1') {
+                subjectField.value = "Follow Up from SupremeLiving";
+                messageField.value = "Dear [Customer Name],\n\nThank you for your recent interest in our products. We wanted to follow up to see if you had any questions or if there's anything we can assist you with.\n\nIf you'd like to schedule a consultation or need more information about any of our Bosch products, please don't hesitate to let us know.\n\nWe look forward to hearing from you.\n\nBest regards,\nSupremeLiving Team";
+            } 
+            else if (templateSelect.value === 'template2') {
+                subjectField.value = "Following Up on Your Bosch Product Inquiry";
+                messageField.value = "Dear [Customer Name],\n\nThank you for your inquiry about our Bosch products. We're following up to provide you with additional information that might help with your decision.\n\nOur current promotion offers a 10% discount on selected items until the end of the month. Would you like us to send you a detailed quotation?\n\nFeel free to reach out if you have any questions.\n\nWarm regards,\nSupremeLiving Team";
+            }
+            else if (templateSelect.value === 'template3') {
+                subjectField.value = "How Are You Enjoying Your Recent Purchase?";
+                messageField.value = "Dear [Customer Name],\n\nWe hope this email finds you well. We wanted to check in and see how you're enjoying your recent purchase from SupremeLiving.\n\nYour satisfaction is our top priority, and we'd love to hear about your experience with our products. If you have any questions about usage or maintenance, our support team is always available to assist you.\n\nThank you for choosing SupremeLiving for your home needs.\n\nBest regards,\nSupremeLiving Team";
+            }
+        }
+        
+        // Replace placeholder with actual customer name when entered
+        document.getElementById('name').addEventListener('input', function() {
+            const messageField = document.getElementById('message');
+            messageField.value = messageField.value.replace('[Customer Name]', this.value);
+        });
+    </script>
 </body>
 </html>

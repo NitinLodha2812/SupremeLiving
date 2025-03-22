@@ -299,10 +299,18 @@ def submit_customer():
     name = request.form['name']
     email = request.form['email']
     message = request.form['message']
-    subject = "Reg: Follow Up"
-    send_email(email, message, subject)
-    success_message = "Follow-Up Message sent!"
-    return render_template('follow.html', success_message = success_message)
+    subject = request.form.get('subject', "Reg: Follow Up from SupremeLiving")
+    
+    # Replace any remaining placeholder if exists
+    message = message.replace('[Customer Name]', name)
+    
+    # Send the email
+    if send_email(email, message, subject):
+        success_message = "Follow-Up email has been sent successfully!"
+    else:
+        success_message = "There was an error sending the email. Please try again."
+    
+    return render_template('follow.html', success_message=success_message)
 
 @app.route('/review')
 def review_link():
