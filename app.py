@@ -90,13 +90,50 @@ def upload_file():
 def send_message():
     name = request.form['name']
     email = request.form['email']
-    catalog = request.form['catalog']
+    catalogs = request.form.getlist('catalogs[]')
+    
+    if not catalogs:
+        files = os.listdir(app.config['UPLOAD_FOLDER'])
+        return render_template('index.html', error_message="Please select at least one catalog", files=files)
+    
     message = generate_message(name)
     subject = "SupremeLiving Product Catalog"
-    pdf_url = os.path.join(app.config['UPLOAD_FOLDER'], catalog)
-    send_email(email, message, subject, pdf_url)
-    success_message = "Message sent!"
-    return render_template('index.html', success_message = success_message, files = os.listdir('uploads'))
+    
+    # Create a single email with multiple attachments
+    try:
+        # Create message container
+        msg = MIMEMultipart()
+        msg['From'] = EMAIL_ADDRESS
+        msg['To'] = email
+        msg['Subject'] = subject
+        
+        # Attach the message text
+        msg.attach(MIMEText(message))
+        
+        # Attach all selected files
+        for catalog in catalogs:
+            pdf_url = os.path.join(app.config['UPLOAD_FOLDER'], catalog)
+            with open(pdf_url, 'rb') as file:
+                attachment = MIMEApplication(file.read(), _subtype="pdf")
+                attachment.add_header('Content-Disposition', 
+                                     'attachment', 
+                                     filename=os.path.basename(pdf_url))
+                msg.attach(attachment)
+        
+        # Connect to Gmail SMTP server
+        server = smtplib.SMTP('smtp.gmail.com', 587)
+        server.starttls()  # Secure the connection
+        server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+        
+        # Send email
+        server.send_message(msg)
+        server.quit()
+        success_message = "Message sent with all selected catalogs!"
+    except Exception as e:
+        print(f"Error sending email: {e}")
+        success_message = f"Error sending email: {str(e)}"
+    
+    return render_template('index.html', success_message=success_message, files=os.listdir('uploads'))
 
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
@@ -109,54 +146,114 @@ def quotation():
 def generate_pdf(data, items):
     today = datetime.today().strftime('%d-%m-%Y')
     pdf = FPDF()
-
+    
+    # Set UTF-8 encoding for the PDF
     pdf.add_page()
-    pdf.set_font("Helvetica", "B", size = 14)
-    pdf.cell(190, 10, txt = "Quotation", ln = True, border = True, align = "C")
-    pdf.set_font("Helvetica", "B", size = 10)
-    pdf.cell(95, 8, txt = f"No. {data['number']}", ln = 0, align = "L", border = True)
-    pdf.cell(95, 8, txt = f"Date: {today}", ln = True, align = "R", border = True)
-    pdf.set_font("Helvetica", "B", size = 9)
-    pdf.cell(190, 15, txt = "To", ln=True)
-    pdf.cell(190, -5, txt = f"{data['name']}", ln=True)
-    pdf.set_font("Helvetica", size = 9)
-    pdf.cell(190, 8, txt = "", ln=True)
-    pdf.cell(190, 7, txt = "Dear Sir/Madam,", ln=True)
-    pdf.cell(190, 1, txt = "", ln=True)
-    pdf.cell(190, 10, txt = "We thank you for your enquiry of Bosch Products.", ln=True)
-    pdf.cell(190, 1, txt =  "In continuation to our discussion please find below our special offer for the same.", ln=True)
+    
+    # Header section
+    pdf.set_font("Helvetica", "B", size=14)
+    pdf.cell(190, 10, txt="Quotation", ln=True, border=True, align="C")
+    pdf.set_font("Helvetica", "B", size=10)
+    pdf.cell(95, 8, txt=f"No. {data['number']}", ln=0, align="L", border=True)
+    pdf.cell(95, 8, txt=f"Date: {today}", ln=True, align="R", border=True)
+    pdf.set_font("Helvetica", "B", size=9)
+    pdf.cell(190, 15, txt="To", ln=True)
+    pdf.cell(190, -5, txt=f"{data['name']}", ln=True)
+    pdf.set_font("Helvetica", size=9)
+    pdf.cell(190, 8, txt="", ln=True)
+    pdf.cell(190, 7, txt="Dear Sir/Madam,", ln=True)
+    pdf.cell(190, 1, txt="", ln=True)
+    pdf.cell(190, 10, txt="We thank you for your enquiry of Bosch Products.", ln=True)
+    pdf.cell(190, 1, txt="In continuation to our discussion please find below our special offer for the same.", ln=True)
     pdf.line(10, 68, 200, 68)
-    pdf.cell(190, 5, txt = "", ln=True)
-    pdf.cell(190, 5, txt = "Product          Price          Description          Special Price", ln=True)
+    pdf.cell(190, 5, txt="", ln=True)
+    
+    # Define column widths
+    col_width_product = 45
+    col_width_price = 30
+    col_width_desc = 75
+    col_width_special = 40
+    
+    # Set table headers
+    pdf.set_font("Helvetica", "B", size=9)
+    pdf.cell(col_width_product, 10, "Product", 1, 0, "L")
+    pdf.cell(col_width_price, 10, "Price", 1, 0, "R")
+    pdf.cell(col_width_desc, 10, "Description", 1, 0, "L")
+    pdf.cell(col_width_special, 10, "Special Price", 1, 1, "R")
+    
+    # Calculate total of special prices
+    total_special_price = 0
+    for price in items['special_prices']:
+        # Strip any currency symbols and commas, then convert to float
+        try:
+            # Handle price format like "₹1,234" or "1,234.56"
+            # Replace Rupee symbol with "Rs." to avoid encoding issues
+            clean_price = price.replace('₹', '').replace(',', '')
+            total_special_price += float(clean_price)
+        except ValueError:
+            # If conversion fails, just skip this item
+            continue
+    
+    # Set table data
+    pdf.set_font("Helvetica", size=8)
+    
     for i in range(len(items['products'])):
-        pdf.cell(190, 5, txt = f"{items['products'][i]}        {items['prices'][i]}       {items['descriptions'][i]}             {items['special_prices'][i]}", ln = True)
-
-    pdf.cell(190, 5, txt = "", ln=True)
-    pdf.set_font("Helvetica", "U", size = 9)
-    pdf.cell(190, 5, txt = "Note", ln=True)
-    pdf.set_font("Helvetica", size = 9)
-    pdf.cell(190, 5, txt = "Price              : The Above Prices are all inclusive of GST", ln=True)
-    pdf.set_font("Helvetica", "B", size = 9)
-    pdf.cell(190, 5, txt = "Payment       : 100% Advance in favour of Shiron Atelier Pvt. Ltd", ln=True)
-    pdf.set_font("Helvetica", size = 9)
-    pdf.cell(190, 5, txt = "Bank Details  : ICICI Bank A/c No.000905034876, IFSC : ICIC0000009, Nungambakkam Branch", ln=True)
-    pdf.cell(190, 5, txt = "Delivery         : Subject to availability of Stock", ln=True)
+        # Create a fixed height row
+        row_height = 10  # Fixed height - adjust if needed
+        
+        # Product
+        current_x = pdf.get_x()
+        current_y = pdf.get_y()
+        pdf.multi_cell(col_width_product, row_height, items['products'][i], 1, 'L')
+        pdf.set_xy(current_x + col_width_product, current_y)
+        
+        # Price (right-aligned) - Replace Rupee symbol if present
+        price_text = items['prices'][i].replace('₹', 'Rs.')
+        pdf.cell(col_width_price, row_height, price_text, 1, 0, 'R')
+        
+        # Description  
+        current_x = pdf.get_x()
+        current_y = pdf.get_y()
+        pdf.multi_cell(col_width_desc, row_height, items['descriptions'][i], 1, 'L')
+        pdf.set_xy(current_x + col_width_desc, current_y)
+        
+        # Special Price (right-aligned) - Replace Rupee symbol if present
+        special_price_text = items['special_prices'][i].replace('₹', 'Rs.')
+        pdf.cell(col_width_special, row_height, special_price_text, 1, 1, 'R')
+    
+    # Add Total row at the bottom of the table
+    pdf.set_font("Helvetica", "B", size=9)
+    pdf.cell(col_width_product + col_width_price + col_width_desc, 10, "Total", 1, 0, "R")
+    pdf.cell(col_width_special, 10, f"Rs.{total_special_price:,.2f}", 1, 1, "R")
+    
+    # Footer content
+    pdf.cell(190, 5, txt="", ln=True)
+    pdf.set_font("Helvetica", "U", size=9)
+    pdf.cell(190, 5, txt="Note", ln=True)
+    pdf.set_font("Helvetica", size=9)
+    pdf.cell(190, 5, txt="Price              : The Above Prices are all inclusive of GST", ln=True)
+    pdf.set_font("Helvetica", "B", size=9)
+    pdf.cell(190, 5, txt="Payment       : 100% Advance in favour of Shiron Atelier Pvt. Ltd", ln=True)
+    pdf.set_font("Helvetica", size=9)
+    pdf.cell(190, 5, txt="Bank Details  : ICICI Bank A/c No.000905034876, IFSC : ICIC0000009, Nungambakkam Branch", ln=True)
+    pdf.cell(190, 5, txt="Delivery         : Subject to availability of Stock", ln=True)
     pdf.set_text_color(255, 0, 0)
-    pdf.cell(190, 5, txt = "Quotation      : Valid for 2 days from the date of quote.", ln=True)
+    pdf.cell(190, 5, txt="Quotation      : Valid for 2 days from the date of quote.", ln=True)
     pdf.set_text_color(0, 0, 0)
-    pdf.set_font("Helvetica", "B", size = 9)
-    pdf.cell(190, 5, txt = "GSTIN No.    : 33ABJCS4952Q1ZM", ln=True)
-    pdf.set_font("Helvetica", size = 9)
-    pdf.cell(190, 5, txt = "", ln = True)
-    pdf.cell(190, 5, txt = "Please Call the Undersigned person for any clarification.", ln=True)
-    pdf.cell(190, 5, txt = "", ln = True)
-    pdf.cell(190, 5, txt = "Regards,", ln = True)
-    pdf.set_font("Helvetica", "B", size = 9)
-    pdf.cell(190, 5, txt = "For Shiron Atelier Pvt. Ltd.,", ln = True)
-    pdf.set_font("Helvetica", size = 9)
-    pdf.cell(190, 8, txt = "", ln = True)
-    pdf.cell(190, 5, txt = "Authorized Signatory", ln = True)
-    pdf.cell(190, 5, txt = "Manager", ln = True)
+    pdf.set_font("Helvetica", "B", size=9)
+    pdf.cell(190, 5, txt="GSTIN No.    : 33ABJCS4952Q1ZM", ln=True)
+    pdf.set_font("Helvetica", size=9)
+    pdf.cell(190, 5, txt="", ln=True)
+    pdf.cell(190, 5, txt="Please Call the Undersigned person for any clarification.", ln=True)
+    pdf.cell(190, 5, txt="", ln=True)
+    pdf.cell(190, 5, txt="Regards,", ln=True)
+    pdf.set_font("Helvetica", "B", size=9)
+    pdf.cell(190, 5, txt="For Shiron Atelier Pvt. Ltd.,", ln=True)
+    pdf.set_font("Helvetica", size=9)
+    pdf.cell(190, 8, txt="", ln=True)
+    pdf.cell(190, 5, txt="Authorized Signatory", ln=True)
+    pdf.cell(190, 5, txt="Manager", ln=True)
+    
     return pdf
 
 @app.route('/generate_quotation', methods=['POST'])

@@ -72,21 +72,36 @@
         #reviewTableContainer {
             margin-top: 20px;
         }
+        
+        .total-container {
+            text-align: right;
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #f8f8f8;
+            border: 1px solid #ddd;
+            font-weight: bold;
+            font-size: 16px;
+        }
     </style>
     <script>
-        let products = {{ products | tojson }};
-        
-        function fillDetails(selectElement) {
-            let row = selectElement.closest('tr');
-            let productName = selectElement.value;
-            let product = products.find(p => p.name === productName);
-            if (product) {
-                row.querySelector('.price').value = product.price;
-                row.querySelector('.description').value = product.description;
-            } else {
-                row.querySelector('.price').value = '';
-                row.querySelector('.description').value = '';
-            }
+        function calculateTotal() {
+            let total = 0;
+            const specialPrices = document.querySelectorAll('input[name="special_prices[]"]');
+            
+            specialPrices.forEach(input => {
+                // Convert the input value to a number, handling currency symbols and commas
+                const value = input.value.replace('₹', '').replace(/,/g, '');
+                if (!isNaN(parseFloat(value))) {
+                    total += parseFloat(value);
+                }
+            });
+            
+            // Update the total display
+            document.getElementById('total-special-price').textContent = new Intl.NumberFormat('en-IN', { 
+                style: 'currency', 
+                currency: 'INR',
+                minimumFractionDigits: 2
+            }).format(total);
         }
 
         function addItem() {
@@ -94,27 +109,50 @@
             let rowCount = table.rows.length;
             let row = table.insertRow(rowCount);
             row.innerHTML = `
-                <td>
-                    <select name="products[]" onchange="fillDetails(this)" required>
-                        <option value="">Select a product</option>
-                        {% for product in products %}
-                            <option value="{{ product['name'] }}">{{ product['name'] }}</option>
-                        {% endfor %}
-                    </select>
-                </td>
-                <td><input type="text" name="prices[]" class="price" readonly></td>
-                <td><input type="text" name="descriptions[]" class="description" readonly></td>
-                <td><input type="text" name="special_prices[]" required></td>
-                <td><button type="button" onclick="this.closest('tr').remove()">Remove</button></td>
+                <td><input type="text" name="products[]" required></td>
+                <td><input type="text" name="prices[]" required></td>
+                <td><input type="text" name="descriptions[]" required></td>
+                <td><input type="text" name="special_prices[]" required oninput="calculateTotal()"></td>
+                <td><button type="button" class="button" onclick="this.closest('tr').remove(); calculateTotal()">Remove</button></td>
             `;
+            calculateTotal();
         }
 
         document.addEventListener("DOMContentLoaded", () => {
-            if (document.getElementById('items-table').rows.length === 1) {
+            // Always ensure there's at least one item row
+            if (document.querySelector('#items-table tbody').rows.length === 0) {
                 addItem();
             }
-
-            document.querySelectorAll('#items-table tbody tr')[0].querySelector('button').style.display = 'none';
+            
+            // Enable remove functionality only if there's more than one row
+            function updateRemoveButtons() {
+                const rows = document.querySelectorAll('#items-table tbody tr');
+                if (rows.length === 1) {
+                    // If only one row exists, disable its remove button
+                    rows[0].querySelector('button').disabled = true;
+                } else {
+                    // Enable all remove buttons when there are multiple rows
+                    rows.forEach(row => {
+                        row.querySelector('button').disabled = false;
+                    });
+                }
+            }
+            
+            // Initial check
+            updateRemoveButtons();
+            
+            // Add observer to monitor table changes
+            const tableBody = document.querySelector('#items-table tbody');
+            const observer = new MutationObserver(updateRemoveButtons);
+            observer.observe(tableBody, { childList: true });
+            
+            // Add event listeners to all special price inputs
+            document.querySelectorAll('input[name="special_prices[]"]').forEach(input => {
+                input.addEventListener('input', calculateTotal);
+            });
+            
+            // Initial calculation
+            calculateTotal();
         });
     </script>
 </head>
@@ -122,7 +160,6 @@
     <div class="navbar">
         <a href="/">Home</a>
         <a href="/quotation">Generate Quotation</a>
-        <a href="/follow">Follow Up</a>
         <a href="/review">Customer Review</a>
     </div>
     <div class="container">
@@ -147,23 +184,20 @@
                 </thead>
                 <tbody>
                     <tr>
-                        <td>
-                            <select name="products[]" onchange="fillDetails(this)" required>
-                                <option value="">Select a product</option>
-                                {% for product in products %}
-                                    <option value="{{ product['name'] }}">{{ product['name'] }}</option>
-                                {% endfor %}
-                            </select>
-                        </td>
-                        <td><input type="text" name="prices[]" class="price" readonly></td>
-                        <td><input type="text" name="descriptions[]" class="description" readonly></td>
-                        <td><input type="text" name="special_prices[]" required></td>
-                        <td><button type="button" class="button" style="display:none;">Remove</button></td>
+                        <td><input type="text" name="products[]" required></td>
+                        <td><input type="text" name="prices[]" required></td>
+                        <td><input type="text" name="descriptions[]" required></td>
+                        <td><input type="text" name="special_prices[]" required oninput="calculateTotal()"></td>
+                        <td><button type="button" class="button" onclick="this.closest('tr').remove(); calculateTotal()">Remove</button></td>
                     </tr>
                 </tbody>
             </table>
             
-            <button type="button" class="button" class="button"onclick="addItem()">Add Item</button><br><br>
+            <div class="total-container">
+                Total Price: <span id="total-special-price">₹0.00</span>
+            </div>
+            
+            <button type="button" class="button" onclick="addItem()">Add Item</button><br><br>
             <button type="submit" class="button" name="send_email" value="1">Send Quotation</button>
             <button type="submit" class="button" name="download_pdf" value="1">Download Quotation</button>
         </form>
